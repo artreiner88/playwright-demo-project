@@ -10,6 +10,7 @@ test.beforeEach( async ({ pages }) => {
 test("Create article", async ({ pages, request }) => {
     const { navigation, articleEditor, articleDetail } = pages
     const article = ArticleHelper.getArticle()
+    const articleService = new ArticleService(request)
 
     // CREATE /UI/
     await navigation.navigateToCreateArticle()
@@ -26,7 +27,7 @@ test("Create article", async ({ pages, request }) => {
     await expect(articleDetail.page.getByText(article.title)).toBeVisible()
 
     // DELETE /API/
-    const deleteArticleResponse = await request.delete(`${process.env.API_URL}/articles/${slugId}`)
+    const deleteArticleResponse = await articleService.deleteArticle(slugId)
     expect(deleteArticleResponse.status()).toEqual(204)
 })
 
