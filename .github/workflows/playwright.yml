@@ -66,8 +66,8 @@ jobs:
         path: playwright-report/
         retention-days: 30
 
-  deploy-report-dev:
-    needs: test-dev
+  deploy-report:
+    needs: [test-dev, test-staging]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -76,38 +76,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Playwright report artifact
+      - name: Create deployment directory
+        run: mkdir -p playwright-reports/dev playwright-reports/staging
+
+      - name: Download Playwright report (dev)
+        if: success() || failure()
         uses: actions/download-artifact@v4
         with:
           name: playwright-report-dev
-          path: playwright-report
+          path: playwright-reports/dev
 
-      - name: Deploy Playwright report to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: playwright-report
-          clean: true
-
-  deploy-report-staging:
-    needs: test-staging
-    if: always()
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download Playwright report artifact
+      - name: Download Playwright report (staging)
+        if: success() || failure()
         uses: actions/download-artifact@v4
         with:
           name: playwright-report-staging
-          path: playwright-report
+          path: playwright-reports/staging
 
-      - name: Deploy Playwright report to GitHub Pages
+      - name: Deploy Playwright reports to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: playwright-report
-          clean: true 
+          folder: playwright-reports
+          clean: false
