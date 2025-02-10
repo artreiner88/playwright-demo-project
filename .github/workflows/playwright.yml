@@ -40,6 +40,29 @@ jobs:
         path: playwright-report/
         retention-days: 30
 
+  deploy-report:
+    needs: test-dev  # Run only after tests complete
+    if: success()    # Deploy only if tests pass
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push to gh-pages branch
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Playwright report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report-dev
+          path: playwright-report
+
+      - name: Deploy Playwright report to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: playwright-report
+          clean: true  # Remove old files
+
   test-staging:
     if: ${{ github.event.inputs.environment == 'staging' }}
     runs-on: ubuntu-latest
