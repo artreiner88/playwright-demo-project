@@ -41,11 +41,11 @@ jobs:
         retention-days: 30
 
   deploy-report:
-    needs: test-dev  # Run only after tests complete
-    if: success()    # Deploy only if tests pass
+    needs: test-dev
+    if: always()
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Required to push to gh-pages branch
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
