@@ -1,5 +1,4 @@
 name: Playwright Tests
-
 on:
   push:
     branches: [ main, master ]
@@ -14,46 +13,61 @@ on:
         options:
           - dev
           - staging
-
 jobs:
-  test:
+  test-dev:
+    if: ${{ github.event.inputs.environment == 'dev' || github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}  # Default to 'dev' if not set
+      ENVIRONMENT: dev
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+    - name: Install dependencies
+      run: npm ci --force
+    - name: Create .env file
+      run: echo -e "${{ vars.ENV_DEV }}" > .env.dev
+    - name: Install Playwright Browsers
+      run: npx playwright install chromium --with-deps --force
+    - name: Run Playwright tests
+      run: NODE_ENV=dev npx playwright test --project=chromium
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: playwright-report-dev
+        path: playwright-report/
+        retention-days: 30
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
+  test-staging:
+    if: ${{ github.event.inputs.environment == 'staging' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ENVIRONMENT: staging
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+    - name: Install dependencies
+      run: npm ci --force
+    - name: Create .env file
+      run: echo -e "${{ vars.ENV_STAGING }}" > .env.staging
+    - name: Install Playwright Browsers
+      run: npx playwright install chromium --with-deps --force
+    - name: Run Playwright tests
+      run: NODE_ENV=staging npx playwright test --project=chromium
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: playwright-report-staging
+        path: playwright-report/
+        retention-days: 30
 
-      - name: Install dependencies
-        run: npm ci --force
-
-      - name: Create .env file
-        run: |
-          if [ "${{ env.ENVIRONMENT }}" == "staging" ]; then
-            echo -e "${{ vars.ENV_STAGING }}" > .env.staging
-          else
-            echo -e "${{ vars.ENV_DEV }}" > .env.dev
-          fi
-
-      - name: Install Playwright Browsers
-        run: npx playwright install chromium --with-deps --force
-
-      - name: Run Playwright tests
-        run: NODE_ENV=${{ env.ENVIRONMENT }} npx playwright test --project=chromium
-
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report-${{ env.ENVIRONMENT }}
-          path: playwright-report/
-          retention-days: 30
-
-  deploy-report:
-    needs: test
+  deploy-report-dev:
+    needs: test-dev
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -65,7 +79,7 @@ jobs:
       - name: Download Playwright report artifact
         uses: actions/download-artifact@v4
         with:
-          name: playwright-report-${{ github.event.inputs.environment || 'dev' }}
+          name: playwright-report-dev
           path: playwright-report
 
       - name: Deploy Playwright report to GitHub Pages
@@ -74,3 +88,26 @@ jobs:
           branch: gh-pages
           folder: playwright-report
           clean: true
+
+  deploy-report-staging:
+    needs: test-staging
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Playwright report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report-staging
+          path: playwright-report
+
+      - name: Deploy Playwright report to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: playwright-report
+          clean: true 
